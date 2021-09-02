@@ -24,6 +24,13 @@ def check_command_string(namespace, pod_name, check_command, i):
     else:
         print("Provided command %s doesn't match the command in pod %s. FAIL" % (check_command, pod_name))
 
+def check_image_value(namespace, pod_name, check_image, i):
+    print(i.spec.containers[0].image)
+    if ( check_image in str((i.spec.containers[0].image))):
+        print("Provided image %s match the command in pod %s. PASS" % (check_image, pod_name))
+    else:
+        print("Provided image %s doesn't match the command in pod %s. FAIL" % (check_image, pod_name))
+
 def check_init_container(namespace, pod_name, i, init_container_name="null", init_container_command="null", init_container_image="null"):
     for count in range(len(i.spec.init_containers)):
         if (init_container_name != "null"):
@@ -117,7 +124,7 @@ def get_daemonset_status(namespace, daemonset_name):
     if (found == "0"):
             print("Daemonset %s is not present. FAIL" % (daemonset_name))
 
-def get_pod_status(namespace, pod_name, check_command="null", env_variable="null", env_value="null", init_container="null", init_container_name="null", init_container_command="null", init_container_image="null"):
+def get_pod_status(namespace, pod_name, check_command="null", check_image="null", env_variable="null", env_value="null", init_container="null", init_container_name="null", init_container_command="null", init_container_image="null"):
     #Checks deployment is the specified namespace. Checks if the pod has init_container's with it's name. image and command which is specified
     config.load_kube_config()
     found="0"
@@ -134,6 +141,8 @@ def get_pod_status(namespace, pod_name, check_command="null", env_variable="null
                     check_env_variable(namespace, pod_name, env_variable, env_value, i)
                 if (check_command != "null"):
                     check_command_string(namespace, pod_name, check_command, i)
+                if (check_image != "null"):
+                    check_image_value(namespace, pod_name, check_image, i)
                 if (init_container != "null"):
                     check_init_container(namespace, pod_name, i, init_container_name=init_container_name, init_container_command=init_container_command, init_container_image=init_container_image)
                     break
@@ -143,7 +152,7 @@ def get_pod_status(namespace, pod_name, check_command="null", env_variable="null
     if (found == "0"):
             print("Pod %s is not present. FAIL" % (pod_name))
 
-def get_servcie_status(namespace, svc_name, check_string="null"):
+def get_service_status(namespace, svc_name, check_string="null"):
     #Checks service is the specified namespace. Checks if the service is accessible and the message which it is displaying
     config.load_kube_config()
     v1 = core_v1_api.CoreV1Api()
@@ -230,4 +239,3 @@ def get_servcie_status(namespace, svc_name, check_string="null"):
                 print("Updates Message not dispalyed. FAIL ")
     else:
         print("Service %s is not accessible. FAIL" % (svc_name))
-
