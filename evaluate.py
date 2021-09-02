@@ -239,3 +239,23 @@ def get_service_status(namespace, svc_name, check_string="null"):
                 print("Updates Message not dispalyed. FAIL ")
     else:
         print("Service %s is not accessible. FAIL" % (svc_name))
+
+def get_node_taint(node_name, taint_variable="null", taint_value="null", taint_effect="null"):
+    #Checks node_name for the taint
+    config.load_kube_config()
+    found="0"
+    v1 = core_v1_api.CoreV1Api()
+    ret = v1.list_node(watch=False, pretty=True)
+    for i in ret.items:
+        if ((str(i.metadata.name) == node_name)):
+            print("Node %s is present checking taints. PASS" % (i.metadata.name))
+            found="1"
+            if (taint_variable != "null" and taint_value != "null"):
+                for count in range(len(i.spec.taints)):
+                    if ((str(i.spec.taints[count].key) == taint_variable) and (str(i.spec.taints[count].value) == taint_value) and (str(i.spec.taints[count].effect) == taint_effect)):
+                        print("Node %s has the following taint key: %s, value: %s, effect: %s. PASS" % (i.metadata.name, i.spec.taints[count].key, i.spec.taints[count].value, i.spec.taints[count].effect))
+                        break
+                    else:
+                        print("Node %s doesn't have the following taint key: %s, value: %s, effect: %s. FAIL" % (i.metadata.name, i.spec.taints[count].key, i.spec.taints[count].value, i.spec.taints[count].effect))
+    if (found == "0"):
+            print("Node %s is not present. FAIL" % (node_name))
