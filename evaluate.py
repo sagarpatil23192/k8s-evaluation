@@ -131,7 +131,7 @@ def get_pod_status(namespace, pod_name, check_command="null", check_image="null"
     v1 = core_v1_api.CoreV1Api()
     ret = v1.list_pod_for_all_namespaces(watch=False, pretty=True)
     for i in ret.items:
-        if ((str(i.metadata.namespace) == namespace) and (str(i.metadata.name) == pod_name)):
+        if ((str(i.metadata.namespace) == namespace) and (pod_name in str(i.metadata.name))):
             print("Pod %s is present checking status. PASS" % (i.metadata.name))
             found="1"
             if (str((i.status.phase)) == "Running"):
