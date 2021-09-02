@@ -231,8 +231,3 @@ def get_servcie_status(namespace, svc_name, check_string="null"):
     else:
         print("Service %s is not accessible. FAIL" % (svc_name))
 
-if __name__ == '__main__':
-    get_deployment_status(namespace="k8s-workshop",deploy_name="redis-primary", container_name="redis", container_image="redis:e2e", container_command="null")
-    get_daemonset_status(namespace="kube-system",daemonset_name="gke-metrics-agent")
-    get_pod_status("default", "myapp-pod", init_container="True", init_container_name="sleep-30", init_container_image="busybox")
-    get_servcie_status("default", "web-servertg-09")
