@@ -17,6 +17,16 @@ def check_env_variable(namespace, pod_name, env_variable, env_value, i):
     if (found == "0"):
             print("Provided environment variable doesn't match with the existing values for the pod %s" % (pod_name))
 
+def check_taint( pod_name, taint_variable, taint_value, taint_operator, taint_effect, node_name, i):
+    found="0"
+    for count in range(len(i.spec.tolerations)):
+        if ((str(i.spec.tolerations[count].key) == taint_variable) and (str(i.spec.tolerations[count].value) == taint_value) and (str(i.spec.tolerations[count].operator) == taint_operator) and (str(i.spec.tolerations[count].effect) == taint_effect) and (str(i.spec.node_name) == node_name)):
+            print("Pod %s is scheduled on correct node %s with proper tolerations. PASS"  % (pod_name, node_name))
+            found="1"
+    if (found == "0"):
+            print("Pod %s is not scheduled on correct node %s with proper tolerations. FAIL"  % (pod_name, node_name))
+
+
 def check_command_string(namespace, pod_name, check_command, i):
     print(i.spec.containers[0].command)
     if ( check_command in str((i.spec.containers[0].command))):
@@ -143,6 +153,9 @@ def get_pod_status(namespace, pod_name, check_command="null", check_image="null"
                     check_command_string(namespace, pod_name, check_command, i)
                 if (check_image != "null"):
                     check_image_value(namespace, pod_name, check_image, i)
+                if (taint_variable != "null" and taint_value != "null" and taint_operator != "null"):
+                    print("Checking taint on the pod and the node on which it is deployed..")
+                    check_taint(pod_name, taint_variable, taint_value, taint_operator, taint_effect, node_name, i)
                 if (init_container != "null"):
                     check_init_container(namespace, pod_name, i, init_container_name=init_container_name, init_container_command=init_container_command, init_container_image=init_container_image)
                     break
