@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from kubernetes import config
+import time
 import kubernetes.client
 from kubernetes import client, config
 from kubernetes.client.api import core_v1_api
