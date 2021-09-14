@@ -8,6 +8,28 @@ from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 configuration = kubernetes.client.Configuration()
 
+def get_node_count():
+    #Checks for the nodes in the k8s clsuter and returns the count
+    config.load_kube_config()
+    # Create an instance of the API class
+    api_instance = core_v1_api.CoreV1Api()
+
+    try:
+        api_response = api_instance.list_node(pretty=True, watch=False)
+        return(len(api_response.items))
+    except ApiException as e:
+        print("Exception when calling CoreV1Api->list_node: %s\n" % e)
+        return(0)
+
+def check_taint( pod_name, taint_variable, taint_value, taint_operator, taint_effect, i):
+    found="0"
+    for count in range(len(i.spec.tolerations)):
+        if ((str(i.spec.tolerations[count].key) == taint_variable) and (str(i.spec.tolerations[count].value) == taint_value) and (str(i.spec.tolerations[count].operator) == taint_operator) and (str(i.spec.tolerations[count].effect) == taint_effect)):
+            print("Pod %s is scheduled with proper tolerations. PASS"  % (pod_name))
+            found="1"
+    if (found == "0"):
+            print("Pod %s is not scheduled with proper tolerations. FAIL"  % (pod_name))
+
 def check_env_variable(namespace, pod_name, env_variable, env_value, i):
     count=0
     found="0"
@@ -20,14 +42,13 @@ def check_env_variable(namespace, pod_name, env_variable, env_value, i):
             print("Provided environment variable doesn't match with the existing values for the pod %s" % (pod_name))
 
 def check_command_string(namespace, pod_name, check_command, i):
-    print(i.spec.containers[0].command)
-    if ( check_command in str((i.spec.containers[0].command))):
+    command_value=" ".join(i.spec.containers[0].command)
+    if ( check_command in str(command_value)):
         print("Provided command %s match the command in pod %s. PASS" % (check_command, pod_name))
     else:
         print("Provided command %s doesn't match the command in pod %s. FAIL" % (check_command, pod_name))
 
 def check_image_value(namespace, pod_name, check_image, i):
-    print(i.spec.containers[0].image)
     if ( check_image in str((i.spec.containers[0].image))):
         print("Provided image %s match the command in pod %s. PASS" % (check_image, pod_name))
     else:
@@ -42,7 +63,11 @@ def check_init_container(namespace, pod_name, i, init_container_name="null", ini
                     break
                 else:
                     if (init_container_command != "null"):
-                        if ((init_container_command in str(i.spec.init_containers[count].command))):
+                        #Remove additional spaces if any
+                        init_container_command=' '.join(init_container_command.split())
+                        command_check=str(i.spec.init_containers[count].command)
+
+                        if ((init_container_command.lower() in command_check.lower())):
                             print("Init_container_name %s has command %s . PASS" % (init_container_name, init_container_command))
                             if (init_container_image == "null"):
                                 break
@@ -117,7 +142,7 @@ def get_daemonset_status(namespace, daemonset_name):
             if (str(api_response.items[count].metadata.name) == daemonset_name):
                 print("Daemonset %s is present checking status. PASS" % (daemonset_name))
                 found="1"
-                if ((api_response.items[count].status.desired_number_scheduled) == (api_response.items[count].status.number_ready) ):
+                if ((api_response.items[count].status.desired_number_scheduled) == (get_node_count()) ):
                     print("Daemonset %s is running on all nodes. PASS" % (daemonset_name))
                 else:
                     print("Daemonset %s is not running on all nodes. FAIL" % (daemonset_name))
@@ -126,7 +151,7 @@ def get_daemonset_status(namespace, daemonset_name):
     if (found == "0"):
             print("Daemonset %s is not present. FAIL" % (daemonset_name))
 
-def get_pod_status(namespace, pod_name, node_name="null", check_command="null", check_image="null", env_variable="null", env_value="null", init_container="null", init_container_name="null", init_container_command="null", init_container_image="null"):
+def get_pod_status(namespace, pod_name, node_name="null", check_command="null", check_image="null", env_variable="null", env_value="null", init_container="null", init_container_name="null", init_container_command="null", init_container_image="null", taint_variable="null", taint_value="null", taint_operator="null", taint_effect="null"):
     #Checks deployment is the specified namespace. Checks if the pod has init_container's with it's name. image and command which is specified
     config.load_kube_config()
     found="0"
@@ -145,6 +170,8 @@ def get_pod_status(namespace, pod_name, node_name="null", check_command="null", 
                     check_command_string(namespace, pod_name, check_command, i)
                 if (check_image != "null"):
                     check_image_value(namespace, pod_name, check_image, i)
+                if (taint_variable != "null" and taint_value != "null" and taint_operator != "null" and taint_effect != "null"):
+                    check_taint( pod_name, taint_variable, taint_value, taint_operator, taint_effect, i)
                 if (node_name != "null"):
                     if ( i.spec.node_name == node_name ):
                         print("Pod %s is running on provided node %s. PASS" % (i.metadata.name, i.spec.node_name))
@@ -222,13 +249,11 @@ def get_service_status(namespace, svc_name, check_string="null"):
             '/bin/sh',
             '-c',
             'apk add curl && curl -i http://' + str(api_response.spec.cluster_ip) + ':' + str(api_response.spec.ports[0].port)]
-        print(exec_command)
     else:
         exec_command = [
             '/bin/sh',
             '-c',
             'apk add curl && curl -I http://' + str(api_response.spec.cluster_ip) + ':' + str(api_response.spec.ports[0].port)]
-        print(exec_command)
     resp = stream(v1.connect_get_namespaced_pod_exec,
                   name,
                   'default',
@@ -240,7 +265,10 @@ def get_service_status(namespace, svc_name, check_string="null"):
         print("Service %s is accessible. PASS" % (svc_name))
         if (check_string != "null"):
             print("Checking displayed message for updated string %s " % (check_string))
-            if check_string in resp:
+            #Remove additional spaces if any
+            check_string=' '.join(check_string.split())
+
+            if check_string.lower() in resp.lower():
                 print("Updated Message dispalyed %s. PASS " % (check_string))
             else:
                 print("Updates Message not dispalyed. FAIL ")
