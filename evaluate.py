@@ -65,7 +65,8 @@ def check_init_container(namespace, pod_name, i, init_container_name="null", ini
                     if (init_container_command != "null"):
                         #Remove additional spaces if any
                         init_container_command=' '.join(init_container_command.split())
-                        command_check=str(i.spec.init_containers[count].command)
+                        command_check=i.spec.init_containers[count].command
+                        command_check=' '.join(command_check)
 
                         if ((init_container_command.lower() in command_check.lower())):
                             print("Init_container_name %s has command %s . PASS" % (init_container_name, init_container_command))
