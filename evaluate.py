@@ -7,6 +7,7 @@ from kubernetes.client.api import core_v1_api
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 configuration = kubernetes.client.Configuration()
+config.load_kube_config()
 
 def get_node_count():
     #Checks for the nodes in the k8s clsuter and returns the count
@@ -310,3 +311,83 @@ def get_node_labels(node_name, label_key="" , label_value=""):
                 break
             else:
                 print("Node %s has the following labels=%s with key=%s : FAIL" % (i.metadata.name, label_key, label_value))
+
+def get_sa(namespace, sa_name="null"):
+    found="0"
+    config.load_kube_config()
+    v1 = core_v1_api.CoreV1Api()
+    try:
+        ret = v1.list_namespaced_service_account(namespace, pretty=True, watch=False)
+        for i in ret.items:
+            if ((str(i.metadata.name) == sa_name)):
+                found="1"
+                return True
+        if (found == "0"):
+                return False
+    except ApiException as e:
+        print("Exception when calling CoreV1Api->list_namespaced_service_account: %s\n" % e)
+
+def check_cluster_role(role_name="null", resource="null", access_type="null"):
+    found=0
+    configuration = kubernetes.client.Configuration()
+    # Enter a context with an instance of the API kubernetes.client
+    with kubernetes.client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+        api_instance = kubernetes.client.RbacAuthorizationV1Api(api_client)
+        try:
+            api_response = api_instance.list_cluster_role(pretty=True, watch=False)
+            for i in api_response.items:
+                if ((str(i.metadata.name) == role_name)):
+                    found="1"
+                    #Checking the ClusterRole Configuration
+                    for count in range(len(i.rules)):
+                        if((resource in i.rules[count].resources) and (access_type == "read") and (set(i.rules[count].verbs) == set(['get','list','watch']))):
+                            return True
+                        else:
+                            return False
+            if (found == "0"):
+                    return False
+        except ApiException as e:
+            print("Exception when calling RbacAuthorizationV1Api->list_cluster_role: %s\n" % e)
+
+
+def check_cluster_role_binding(namespace="null", role_binding_name="null", role_name="null", sa_name="null"):
+    found=0
+    configuration = kubernetes.client.Configuration()
+    # Enter a context with an instance of the API kubernetes.client
+    with kubernetes.client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+        api_instance = kubernetes.client.RbacAuthorizationV1Api(api_client)
+        try:
+            api_response = api_instance.list_cluster_role_binding(pretty=True, watch=False)
+            for i in api_response.items:
+                if ((str(i.metadata.name) == role_binding_name)):
+                    found="1"
+                    #Checking the ClusterRoleBinding Configuration
+                    if (str(i.role_ref.name) == role_name):
+                        for count in range(len(i.subjects)):
+                            if ((str(i.subjects[count].namespace) == namespace) and (str(i.subjects[count].name) == sa_name)):
+                                return True
+                            else:
+                                return False
+                    else:
+                        return False
+            if (found == "0"):
+                    return False
+        except ApiException as e:
+            print("Exception when calling RbacAuthorizationV1Api->list_cluster_role_binding: %s\n" % e)
+
+
+def check_cluster_role_sceanrio(namespace="null", role_binding_name="null", role_name="null", resource="null", access_type="null", sa_name="null"):
+    if (get_sa(namespace=namespace, sa_name=sa_name)):
+        print("Service Account %s is present. PASS" % (sa_name))
+        if(check_cluster_role(role_name=role_name, resource=resource, access_type=access_type)):
+            print("Cluster Role %s is present and has correct configuration. PASS" % (role_name))
+            if(check_cluster_role_binding(namespace=namespace, role_binding_name=role_binding_name, role_name=role_name, sa_name=sa_name)):
+                print("Cluster Role Binding %s is present has correct configuration. PASS" % (role_binding_name))
+            else:
+                print("Cluster Role Binding %s is not present has incorrect configuration. FAIL" % (role_binding_name))
+        else:
+            print("Cluster Role %s is not present or has incorrect configuration. FAIL" % (role_name))
+    else:
+        print("Service Account %s is not present. FAIL" % (sa_name))
