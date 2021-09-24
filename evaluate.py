@@ -329,9 +329,9 @@ def get_sa(namespace, sa_name="null"):
 
 def check_cluster_role(role_name="null", resource="null", access_type="null"):
     found=0
-    configuration = kubernetes.client.Configuration()
+    #configuration = kubernetes.client.Configuration()
     # Enter a context with an instance of the API kubernetes.client
-    with kubernetes.client.ApiClient(configuration) as api_client:
+    with kubernetes.client.ApiClient() as api_client:
     # Create an instance of the API class
         api_instance = kubernetes.client.RbacAuthorizationV1Api(api_client)
         try:
@@ -353,9 +353,9 @@ def check_cluster_role(role_name="null", resource="null", access_type="null"):
 
 def check_cluster_role_binding(namespace="null", role_binding_name="null", role_name="null", sa_name="null"):
     found=0
-    configuration = kubernetes.client.Configuration()
+    #configuration = kubernetes.client.Configuration()
     # Enter a context with an instance of the API kubernetes.client
-    with kubernetes.client.ApiClient(configuration) as api_client:
+    with kubernetes.client.ApiClient() as api_client:
     # Create an instance of the API class
         api_instance = kubernetes.client.RbacAuthorizationV1Api(api_client)
         try:
