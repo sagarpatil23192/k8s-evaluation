@@ -153,7 +153,7 @@ def get_daemonset_status(namespace, daemonset_name):
     if (found == "0"):
             print("Daemonset %s is not present. FAIL" % (daemonset_name))
 
-def get_pod_status(namespace, pod_name, node_name="null", check_command="null", check_image="null", env_variable="null", env_value="null", init_container="null", init_container_name="null", init_container_command="null", init_container_image="null", taint_variable="null", taint_value="null", taint_operator="null", taint_effect="null"):
+def get_pod_status(namespace, pod_name, node_name="null", check_command="null", check_image="null", env_variable="null", env_value="null", init_container="null", init_container_name="null", init_container_command="null", init_container_image="null", taint_variable="null", taint_value="null", taint_operator="null", taint_effect="null", pod_user_id="null"):
     #Checks deployment is the specified namespace. Checks if the pod has init_container's with it's name. image and command which is specified
     config.load_kube_config()
     found="0"
@@ -172,6 +172,15 @@ def get_pod_status(namespace, pod_name, node_name="null", check_command="null", 
                     check_command_string(namespace, pod_name, check_command, i)
                 if (check_image != "null"):
                     check_image_value(namespace, pod_name, check_image, i)
+                if (pod_user_id != "null"):
+                    print("Checking pod user id...")
+                    exec_command=['/bin/sh','-c','id | grep -ow ' + str(pod_user_id) ] 
+                    resp = stream(v1.connect_get_namespaced_pod_exec,pod_name,namespace,command=exec_command,stderr=True, stdin=False, stdout=True, tty=False)
+                    if ( resp == pod_user_id ):
+                      print("Pod %s is running with userid %s. PASS" % (i.metadata.name, pod_user_id))
+                    else:
+                      print("Pod %s is running with userid %s. FAIL" % (i.metadata.name, pod_user_id)) 
+                    
                 if (taint_variable != "null" and taint_value != "null" and taint_operator != "null" and taint_effect != "null"):
                     check_taint( pod_name, taint_variable, taint_value, taint_operator, taint_effect, i)
                 if (node_name != "null"):
@@ -391,3 +400,4 @@ def check_cluster_role_sceanrio(namespace="null", role_binding_name="null", role
             print("Cluster Role %s is not present or has incorrect configuration. FAIL" % (role_name))
     else:
         print("Service Account %s is not present. FAIL" % (sa_name))
+
