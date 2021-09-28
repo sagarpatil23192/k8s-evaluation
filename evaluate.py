@@ -415,7 +415,7 @@ def check_pv_status(pv_name, disk_name="null", pv_status="null"):
     if ( found == 0 ):
       print("PV %s status check : FAIL" % (pv_name))
 
-def check_pvc_status(pvc_name, pv_name="null", disk_name="null", pv_status="null"):
+def check_pvc_status(pvc_name, pv_name="null", disk_name="null", pv_status="null", namespace="null"):
     config.load_kube_config()
     found=0
     check_pv_status(pv_name=pv_name, disk_name=disk_name, pv_status=pv_status) 
@@ -423,10 +423,9 @@ def check_pvc_status(pvc_name, pv_name="null", disk_name="null", pv_status="null
     ret = v1.list_persistent_volume_claim_for_all_namespaces(watch=False, pretty=True)
     print("Checking pvc status....")
     for i in ret.items:
-      if ( i.metadata.name == pvc_name and i.status.phase == pv_status and i.spec.volume_name == pv_name):
+      if ( i.metadata.name == pvc_name and i.status.phase == pv_status and i.spec.volume_name == pv_name and i.metadata.namespace == namespace):
         print("PVC %s status check : PASS" % (i.metadata.name))
         found=1
         break;
     if ( found == 0 ):
       print("PVC %s status check : FAIL" % (pvc_name))
-
