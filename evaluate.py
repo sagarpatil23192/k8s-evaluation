@@ -401,17 +401,32 @@ def check_cluster_role_sceanrio(namespace="null", role_binding_name="null", role
     else:
         print("Service Account %s is not present. FAIL" % (sa_name))
 
-def check_pv_status(pv_name, disk_name="null"):
+def check_pv_status(pv_name, disk_name="null", pv_status="null"):
     print("Checking pv status....")
     config.load_kube_config()
     found=0
     v1 = core_v1_api.CoreV1Api()
     ret = v1.list_persistent_volume(watch=False, pretty=True)
     for i in ret.items:
-      if ( i.spec.gce_persistent_disk.pd_name == disk_name  and i.metadata.name == pv_name and i.status.phase == "Available" ):
+      if ( i.spec.gce_persistent_disk.pd_name == disk_name  and i.metadata.name == pv_name and i.status.phase == pv_status ):
         print("PV %s status check : PASS" % (i.metadata.name))
         found=1
         break;
     if ( found == 0 ):
       print("PV %s status check : FAIL" % (pv_name))
+
+def check_pvc_status(pvc_name, pv_name="null", disk_name="null", pv_status="null"):
+    config.load_kube_config()
+    found=0
+    check_pv_status(pv_name=pv_name, disk_name=disk_name, pv_status=pv_status) 
+    v1 = core_v1_api.CoreV1Api()
+    ret = v1.list_persistent_volume_claim_for_all_namespaces(watch=False, pretty=True)
+    print("Checking pvc status....")
+    for i in ret.items:
+      if ( i.metadata.name == pvc_name and i.status.phase == pv_status and i.spec.volume_name == pv_name):
+        print("PVC %s status check : PASS" % (i.metadata.name))
+        found=1
+        break;
+    if ( found == 0 ):
+      print("PVC %s status check : FAIL" % (pvc_name))
 
