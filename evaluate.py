@@ -401,3 +401,17 @@ def check_cluster_role_sceanrio(namespace="null", role_binding_name="null", role
     else:
         print("Service Account %s is not present. FAIL" % (sa_name))
 
+def check_pv_status(pv_name, disk_name="null"):
+    print("Checking pv status....")
+    config.load_kube_config()
+    found=0
+    v1 = core_v1_api.CoreV1Api()
+    ret = v1.list_persistent_volume(watch=False, pretty=True)
+    for i in ret.items:
+      if ( i.spec.gce_persistent_disk.pd_name == disk_name  and i.metadata.name == pv_name and i.status.phase == "Available" ):
+        print("PV %s status check : PASS" % (i.metadata.name))
+        found=1
+        break;
+    if ( found == 0 ):
+      print("PV %s status check : FAIL" % (pv_name))
+
