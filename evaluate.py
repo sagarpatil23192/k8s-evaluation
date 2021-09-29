@@ -6,6 +6,7 @@ from kubernetes import client, config
 from kubernetes.client.api import core_v1_api
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
+import requests
 configuration = kubernetes.client.Configuration()
 config.load_kube_config()
 
@@ -429,3 +430,19 @@ def check_pvc_status(pvc_name, pv_name="null", disk_name="null", pv_status="null
         break;
     if ( found == 0 ):
       print("PVC %s status check : FAIL" % (pvc_name))
+
+def ing_check(pod1_name,pod1_image,pod2_name,pod2_image,lb,namespace):
+    print("Checking ing status .....")
+    config.load_kube_config()
+    found=0
+    v1 = core_v1_api.CoreV1Api()
+    get_pod_status(namespace=namespace, pod_name=pod1_name, check_image=pod1_image)
+    get_pod_status(namespace=namespace, pod_name=pod2_name, check_image=pod2_image)
+    site1="http://"+lb+"/stilton"
+    site2="http://"+lb+"/cheddar"
+    r1 = requests.get(site1)
+    r2 = requests.get(site2)
+    if ( r1.status_code == 200  and r2.status_code == 200):
+      print("Ingress status check : PASS")
+    else:
+      print("Ingress status check : FAIL")
