@@ -110,27 +110,7 @@ def check_container(container_name, container_list, container_image="null", cont
                 break
     if (found == "0"):
             print("Container %s is not present in the deployment. FAIL" % (container_name))
-
-def get_deployment_status(namespace, deploy_name, container_name="null", container_image="null", container_command="null"):
-    #Checks deployment is the specified namespace. Checks if the container's name. image and command which is specified
-    config.load_kube_config()
-    # Create an instance of the API class
-    api_instance = kubernetes.client.AppsV1Api()
-    found="0"
-    try:
-        api_response = api_instance.list_namespaced_deployment(namespace, pretty=True, watch=False)
-        for count in range(len(api_response.items)):
-            if (str(api_response.items[count].metadata.name) == deploy_name):
-                print("Deployment %s is present. PASS" % (deploy_name))
-                if (container_name != "null"):
-                    print("Checking %s container in Deployment %s ..." % (container_name,deploy_name))
-                    check_container(container_name=container_name, container_list=api_response.items[count].spec.template.spec.containers, container_image=container_image, container_command=container_command)
-                found="1"
-    except ApiException as e:
-        print("Exception when calling AppsV1Api->list_namespaced_deployment: %s\n" % e)
-    if (found == "0"):
-            print("Deployment %s is not present. FAIL" % (deploy_name))
-
+            
 
 def get_daemonset_status(namespace, daemonset_name):
     #Checks daemonsets status. Also checks the desired and available values
@@ -446,3 +426,17 @@ def ing_check(pod1_name,pod1_image,pod2_name,pod2_image,lb,namespace):
       print("Ingress status check : PASS")
     else:
       print("Ingress status check : FAIL")
+    
+def get_deployment_status(namespace, deploy_name, affinity_key, affinity_value, replicas):
+    print("Checking deployment status....")
+    found=0
+    with kubernetes.client.ApiClient() as api_client:
+        api_instance = kubernetes.client.AppsV1Api(api_client)
+        api_response = api_instance.list_deployment_for_all_namespaces(pretty=True, watch=False)
+        for i in api_response.items:
+          if ( i.metadata.namespace == namespace and i.metadata.name == deploy_name and i.status.available_replicas == replicas and  i.spec.template.spec.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms[0].match_expressions[0].key == affinity_key and  i.spec.template.spec.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms[0].match_expressions[0].values[0] == affinity_value ):
+            print ("Deployment %s status check. PASS" % (deploy_name))
+            found=1
+            break
+        if ( found == 0 ):
+          print ("Deployment %s status check. FAIL" % (deploy_name))    
